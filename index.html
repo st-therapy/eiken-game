@@ -1,0 +1,351 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>英検 SPACE BATTLE</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:#000;overflow:hidden;touch-action:none;
+    font-family:"Hiragino Sans","Segoe UI",system-ui,sans-serif;color:#ffd34d}
+  #wrap{position:relative;width:100%;max-width:520px;height:100vh;height:100dvh;margin:0 auto}
+  #wrap canvas{display:block;width:100%;height:100%}
+  #ui{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;padding:24px 24px calc(24px + env(safe-area-inset-bottom,0px));
+    text-align:center;overflow:auto;
+    background:radial-gradient(circle at 50% 40%,#0a1130ee,#000000f5 70%)}
+  #ui.hide{display:none}
+  #wrap h1{font-size:30px;letter-spacing:3px;color:#ffd34d;font-weight:700;
+    text-shadow:0 0 14px #ffb300,0 0 40px #ff8c00;line-height:1.3}
+  #wrap h2{font-size:15px;letter-spacing:6px;color:#7ec8ff;margin-bottom:18px;font-weight:600;
+    text-shadow:0 0 12px #2a9bff}
+  #wrap p{font-size:13px;color:#bcd7f0;line-height:1.9;margin:2px}
+  #res{font-size:16px;color:#ffd34d;line-height:1.8;margin:10px 0;text-shadow:0 0 10px #ffb300}
+  #wrap button{margin-top:22px;padding:14px 34px;font-size:18px;letter-spacing:2px;
+    background:transparent;color:#ffd34d;border:2px solid #ffd34d;border-radius:6px;
+    text-shadow:0 0 10px #ffb300;box-shadow:0 0 18px #ffb30088;cursor:pointer;
+    font-family:inherit}
+  #wrap button:active{background:#ffd34d22}
+  #wrap button:focus-visible{outline:2px solid #7ec8ff;outline-offset:3px}
+  #probe{position:fixed;left:0;bottom:0;width:1px;pointer-events:none;opacity:0;
+    height:env(safe-area-inset-bottom,0px)}
+</style>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="ui">
+    <h2>EIKEN 3 / PRE-2 / 2</h2>
+    <h1>SPACE BATTLE</h1>
+    <p id="res"></p>
+    <p>迫りくる敵艦には熟語が書かれている。</p>
+    <p>英文の空所に入る敵艦を タップ して撃て！</p>
+    <p>撃ち漏らすとシールドが削られる。全10問。</p>
+    <p>出題は 3級1問 ／ 準2級6問 ／ 2級3問。</p>
+    <button id="btn">MISSION START</button>
+  </div>
+</div>
+<div id="probe"></div>
+<script>
+// [英文, 選択肢4つ, 正解の番号, 解説, 級]
+const Q=[
+["I ____ up at seven every morning.",["get","take","put","look"],0,"get up：起きる","3級"],
+["Please ____ care of my cat while I am away.",["take","make","do","have"],0,"take care of：世話をする","3級"],
+["She is good ____ playing the piano.",["at","on","to","of"],0,"be good at：～が得意だ","3級"],
+["I am looking ____ to the summer vacation.",["forward","front","after","over"],0,"look forward to：楽しみに待つ","3級"],
+["Let us ____ a walk in the park.",["take","do","make","get"],0,"take a walk：散歩する","3級"],
+["My little sister is ____ of dogs.",["afraid","happy","kind","full"],0,"be afraid of：～を怖がる","3級"],
+["Turn ____ the TV, please. It is too loud.",["off","in","up","into"],0,"turn off：消す","3級"],
+["I want to ____ friends with him.",["make","take","do","get"],0,"make friends with：友達になる","3級"],
+["We arrived ____ the station at noon.",["at","to","on","for"],0,"arrive at：～に到着する","3級"],
+["She is looking ____ her key.",["for","at","up","after"],0,"look for：～を探す","3級"],
+["Do not be late ____ school.",["for","to","at","in"],0,"be late for：～に遅刻する","3級"],
+["This bag is made ____ paper.",["of","by","in","at"],0,"be made of：～でできている","3級"],
+
+["The train was delayed ____ the heavy snow.",["because of","instead of","in front of","as well as"],0,"because of：～のせいで","準2級"],
+["I ran ____ my old friend at the mall.",["into","out","over","after"],0,"run into：偶然出会う","準2級"],
+["He gave ____ smoking last year.",["up","in","out","off"],0,"give up：やめる","準2級"],
+["Please fill ____ this form before the test.",["out","off","into","over"],0,"fill out：記入する","準2級"],
+["She takes ____ her mother in many ways.",["after","off","over","in"],0,"take after：～に似ている","準2級"],
+["We put ____ the meeting until Friday.",["off","on","out","in"],0,"put off：延期する","準2級"],
+["I will pick you ____ at the station at six.",["up","in","off","over"],0,"pick up：迎えに行く","準2級"],
+["The concert was called ____ because of the rain.",["off","on","up","in"],0,"call off：中止する","準2級"],
+["Can you turn ____ the music? It is too loud.",["down","in","into","over"],0,"turn down：音量を下げる","準2級"],
+["I came ____ an interesting article yesterday.",["across","along","over","out"],0,"come across：偶然見つける","準2級"],
+["Let us hurry ____ , or we will miss the bus.",["up","on","in","over"],0,"hurry up：急ぐ","準2級"],
+["He is ____ charge of the new project.",["in","on","at","for"],0,"in charge of：～を担当している","準2級"],
+["I am used ____ getting up early now.",["to","for","at","with"],0,"be used to：～に慣れている","準2級"],
+["He showed ____ thirty minutes late.",["up","off","in","out"],0,"show up：現れる","準2級"],
+["Please hand ____ your homework tomorrow.",["in","out","over","down"],0,"hand in：提出する","準2級"],
+["We have run ____ of milk.",["out","off","over","into"],0,"run out of：使い果たす","準2級"],
+["She grew ____ in a small town in Hokkaido.",["up","out","in","over"],0,"grow up：育つ","準2級"],
+["____ to your help, I finished the work early.",["Thanks","Because","Instead","According"],0,"thanks to：～のおかげで","準2級"],
+["Please let me know ____ advance.",["in","on","at","by"],0,"in advance：前もって","準2級"],
+["Take ____ your shoes before entering the room.",["off","out","in","over"],0,"take off：脱ぐ","準2級"],
+["We need to get ____ the bus at the next stop.",["off","out","down","away"],0,"get off：（バスなどを）降りる","準2級"],
+["I agree ____ your opinion.",["with","to","on","at"],0,"agree with：～に同意する","準2級"],
+
+["She had to ____ his rude behavior every day.",["put up with","put off","put out","put away"],0,"put up with：我慢する","2級"],
+["He ____ a good idea for the school festival.",["came up with","came across","came out","came along"],0,"come up with：思いつく","2級"],
+["I need to ____ these old magazines.",["get rid of","get over","get through","get along"],0,"get rid of：処分する","2級"],
+["It is hard to ____ the latest technology.",["keep up with","keep on","keep out","keep off"],0,"keep up with：遅れずについていく","2級"],
+["I ____ my teacher because she always helps others.",["look up to","look down on","look out for","look forward to"],0,"look up to：尊敬する","2級"],
+["____ the bad weather, they finished the race.",["In spite of","Because of","Thanks to","As for"],0,"in spite of：～にもかかわらず","2級"],
+["She was ____ by her grandmother in the country.",["brought up","brought about","brought out","brought back"],0,"bring up：育てる","2級"],
+["We must ____ this problem right away.",["deal with","deal in","deal out","deal to"],0,"deal with：対処する","2級"],
+["He ____ his father's company last year.",["took over","took off","took in","took up"],0,"take over：引き継ぐ","2級"],
+["My car ____ on the highway last night.",["broke down","broke out","broke into","broke up"],0,"break down：故障する","2級"],
+["It took him a while to ____ the difficult problem.",["figure out","figure in","figure on","figure up"],0,"figure out：理解する","2級"],
+["The doctor told him to ____ sweet food.",["cut down on","cut off","cut in","cut out for"],0,"cut down on：減らす","2級"],
+["She ____ well with all of her classmates.",["gets along","gets up","gets by","gets in"],0,"get along with：仲良くやる","2級"],
+["He worked hard to ____ his mistake.",["make up for","make out","make up with","make for"],0,"make up for：埋め合わせをする","2級"],
+["The police are ____ the cause of the accident.",["looking into","looking up","looking on","looking out"],0,"look into：調査する","2級"],
+["The company decided to ____ a new branch in Osaka.",["set up","set off","set in","set back"],0,"set up：設立する","2級"]
+];
+// 出題配分：3級1問・準2級6問・2級3問
+const MIX=[["3級",1],["準2級",6],["2級",3]];
+const TOTAL=10;
+
+const wrapEl=document.getElementById('wrap');
+const probe=document.getElementById('probe');
+const c=document.getElementById('c'),x=c.getContext('2d');
+const ui=document.getElementById('ui'),btn=document.getElementById('btn'),res=document.getElementById('res');
+const hTitle=document.querySelector('#wrap h1');
+let W=0,H=0,BP=0,run=false,gen=0,last=0;
+let stars=[],ships=[],par=[],beam=null,qi,list,score,combo,shield,mode,fb,fbT,shake,flash;
+let qLines=[],panelTop=0,panelH=0,dangerY=0,shipY=0,hudY=0,gyv=.2;
+
+// 実際に見えている高さに合わせる（iPhoneの下部バーや埋め込み枠で切れるのを防ぐ）
+function fit(){
+  const vv=window.visualViewport;
+  let h=window.innerHeight||0;
+  if(vv&&vv.height)h=Math.min(h||vv.height,vv.height);
+  if(h>80)wrapEl.style.height=h+'px';
+}
+
+function resize(){
+  fit();
+  const r=c.getBoundingClientRect();
+  if(r.width<10||r.height<10){requestAnimationFrame(resize);return;}
+  const d=Math.min(devicePixelRatio||1,2);
+  W=r.width;H=r.height;c.width=W*d;c.height=H*d;x.setTransform(d,0,0,d,0,0);
+  // 画面下に確保する余白（ホームバー等の安全領域 + 余裕）
+  BP=32+Math.round(probe.getBoundingClientRect().height||0);
+  stars=[];for(let i=0;i<90;i++)stars.push({x:Math.random()*W,y:Math.random()*H,
+    z:Math.random()*2+.4,s:Math.random()*1.6+.4});
+  if(mode&&mode!=='over'&&qi<TOTAL)layoutQ();
+  if(!mode)draw();
+}
+addEventListener('resize',resize);
+addEventListener('orientationchange',()=>setTimeout(resize,300));
+if(window.visualViewport)visualViewport.addEventListener('resize',resize);
+resize();
+
+// 効果音（WebAudio・外部ファイル不要）
+let ac;
+function beep(f1,f2,dur,type,vol){
+  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    if(ac.state==='suspended')ac.resume();
+    const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime;
+    o.type=type;o.frequency.setValueAtTime(f1,t);o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+    g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+dur);}catch(e){}
+}
+const sLaser=()=>beep(900,120,.18,'square',.09);
+const sHit=()=>beep(260,40,.4,'sawtooth',.12);
+const sMiss=()=>beep(150,60,.5,'triangle',.12);
+
+// 裏のタブに回ったら自動ポーズ、戻ったら再開
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){run=false;gen++;}
+  else if(mode&&mode!=='over'){run=true;last=performance.now();start(++gen);}
+});
+function start(g){requestAnimationFrame(n=>{if(g===gen)loop(n)});}
+btn.onclick=init;
+
+function init(){
+  if(!W){resize();if(!W){requestAnimationFrame(init);return;}}
+  list=[];
+  MIX.forEach(function(m){
+    const pool=Q.filter(q=>q[4]===m[0]).sort(()=>Math.random()-.5).slice(0,m[1]);
+    list=list.concat(pool);
+  });
+  list.sort(()=>Math.random()-.5);
+  qi=-1;score=0;combo=0;shield=3;par=[];beam=null;shake=0;flash=0;
+  ui.classList.add('hide');next();
+  run=true;last=performance.now();start(++gen);
+  beep(200,800,.3,'sine',.06);
+}
+
+// 下から順に HUD → 自機 → 問題文パネル → 危険ライン を積み上げる
+function layoutQ(){
+  const q=list[qi];
+  const B=H-BP;              // 安全に表示できる一番下
+  hudY=B-4;                  // スコア／シールド
+  shipY=B-54;                // 自機の中心
+  x.font='bold 15px sans-serif';
+  qLines=wrapLines(q[0],W-28);
+  panelH=44+qLines.length*20;
+  panelTop=(shipY-24)-10-panelH;   // 自機のすぐ上
+  dangerY=panelTop-14;
+}
+
+function next(){
+  qi++;
+  if(qi>=TOTAL){over();return;}
+  const q=list[qi],idx=[0,1,2,3].sort(()=>Math.random()-.5);
+  const pw=Math.min(W*.44,190),ph=52;
+  ships=idx.map((oi,k)=>({t:q[1][oi],ok:oi===q[2],
+    x:(k%2?.73:.27)*W,y:-90-Math.floor(k/2)*82-(k%2)*26,w:pw,h:ph,dead:false}));
+  mode='play';fb=null;
+  layoutQ();
+  gyv=.2+qi*.03;   // 落下速度（ゆっくりめ。問題が進むと少しずつ速くなる）
+}
+
+function tap(px,py){
+  if(mode!=='play')return;
+  for(const s of ships){
+    if(s.dead)continue;
+    if(Math.abs(px-s.x)<s.w/2+6&&Math.abs(py-s.y)<s.h/2+8){fire(s);return;}
+  }
+}
+c.addEventListener('pointerdown',e=>{
+  e.preventDefault();const r=c.getBoundingClientRect();
+  tap(e.clientX-r.left,e.clientY-r.top);
+},{passive:false});
+
+function fire(s){
+  sLaser();
+  beam={x:s.x,y:s.y,l:10};
+  s.dead=true;
+  boom(s.x,s.y,s.ok?'#7ec8ff':'#ff4d4d',26);
+  if(s.ok){sHit();combo++;score+=100+combo*20;fb=1;}
+  else{sMiss();combo=0;shield--;fb=0;flash=1;shake=14;}
+  mode='fb';fbT=0;
+}
+
+function boom(px,py,col,n){
+  for(let i=0;i<n;i++){const a=Math.random()*6.28,v=1+Math.random()*4;
+    par.push({x:px,y:py,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:1,c:col});}
+}
+
+function loop(now){
+  if(!run)return;
+  const dt=Math.min(Math.max((now-last)/16.67,0),3);last=now;
+
+  stars.forEach(s=>{s.y+=s.z*1.2*dt;if(s.y>H){s.y=-2;s.x=Math.random()*W}});
+  par.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.l-=.028*dt});par=par.filter(p=>p.l>0);
+  if(beam){beam.l-=dt;if(beam.l<=0)beam=null;}
+  if(shake>0)shake-=dt;if(flash>0)flash-=.06*dt;
+
+  if(mode==='play'){
+    ships.forEach(s=>s.y+=gyv*dt*2.2);
+    if(ships.some(s=>!s.dead&&s.y>dangerY)){
+      sMiss();combo=0;shield--;fb=-1;flash=1;shake=12;mode='fb';fbT=0;
+      ships.forEach(s=>{if(!s.dead)boom(s.x,s.y,'#ff4d4d',10)});
+    }
+  }else if(mode==='fb'){
+    fbT+=dt;
+    if(fbT>115){ if(shield<=0)over(); else next(); }
+  }
+
+  draw();
+  if(run)start(gen);
+}
+
+function draw(){
+  x.save();
+  if(shake>0)x.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+  x.fillStyle='#000';x.fillRect(-20,-20,W+40,H+40);
+  stars.forEach(s=>{x.globalAlpha=.3+s.z*.3;x.fillStyle='#cfe6ff';
+    x.fillRect(s.x,s.y,s.s,s.s+s.z)});
+  x.globalAlpha=.25;x.beginPath();x.arc(W*.8,H*.18,W*.42,0,6.3);
+  x.fillStyle='#123a6b';x.fill();x.globalAlpha=1;
+
+  if(!mode||mode==='over'||qi>=TOTAL){x.restore();return;}
+  const q=list[qi];
+
+  // 敵艦
+  ships.forEach(s=>{
+    if(s.dead)return;
+    x.globalAlpha=mode==='fb'?.18:1;
+    const w=s.w,h=s.h;
+    x.fillStyle='#08152acc';x.strokeStyle='#7ec8ff';x.lineWidth=2;
+    x.shadowBlur=14;x.shadowColor='#2a9bff';
+    x.beginPath();
+    x.moveTo(s.x-w/2,s.y);x.lineTo(s.x-w/2+12,s.y-h/2);x.lineTo(s.x+w/2-12,s.y-h/2);
+    x.lineTo(s.x+w/2,s.y);x.lineTo(s.x+w/2-12,s.y+h/2);x.lineTo(s.x-w/2+12,s.y+h/2);
+    x.closePath();x.fill();x.stroke();
+    x.shadowBlur=0;
+    x.fillStyle='#eaf6ff';x.font='bold 15px sans-serif';x.textAlign='center';
+    x.fillText(s.t,s.x,s.y+5);
+    x.globalAlpha=1;
+  });
+
+  // 危険ライン
+  x.strokeStyle='#ff4d4d55';x.setLineDash([6,8]);x.lineWidth=1;
+  x.beginPath();x.moveTo(0,dangerY);x.lineTo(W,dangerY);x.stroke();x.setLineDash([]);
+
+  // 問題文パネル（自機のすぐ上）
+  x.textAlign='center';
+  x.fillStyle='#050b18f2';x.fillRect(0,panelTop,W,panelH);
+  x.strokeStyle='#ffd34d66';x.lineWidth=1;
+  x.beginPath();x.moveTo(0,panelTop);x.lineTo(W,panelTop);x.stroke();
+  x.beginPath();x.moveTo(0,panelTop+panelH);x.lineTo(W,panelTop+panelH);x.stroke();
+  x.fillStyle='#7ec8ff';x.font='11px sans-serif';
+  x.fillText('TARGET  '+(qi+1)+' / '+TOTAL+'　［ '+q[4]+' ］',W/2,panelTop+18);
+  x.fillStyle='#ffffff';x.font='bold 15px sans-serif';
+  qLines.forEach((l,i)=>x.fillText(l,W/2,panelTop+42+i*20));
+
+  // 自機
+  x.strokeStyle='#ffd34d';x.lineWidth=2;x.shadowBlur=12;x.shadowColor='#ffb300';
+  x.beginPath();x.moveTo(W/2,shipY-24);x.lineTo(W/2+18,shipY+10);x.lineTo(W/2,shipY+1);
+  x.lineTo(W/2-18,shipY+10);x.closePath();x.stroke();x.shadowBlur=0;
+
+  // HUD
+  x.textAlign='left';x.font='bold 13px sans-serif';x.fillStyle='#ffd34d';
+  x.fillText('SCORE '+score,12,hudY);
+  x.textAlign='right';
+  x.fillStyle=shield>1?'#7ec8ff':'#ff5a5a';
+  x.fillText('SHIELD '+'▮'.repeat(Math.max(shield,0))+'▯'.repeat(Math.max(3-shield,0)),W-12,hudY);
+  if(combo>1){x.textAlign='center';x.fillStyle='#ffd34d';x.font='bold 12px sans-serif';
+    x.fillText(combo+' COMBO',W/2,hudY);}
+
+  // ビーム
+  if(beam){x.strokeStyle='#fff2a8';x.lineWidth=4;x.globalAlpha=beam.l/10;
+    x.beginPath();x.moveTo(W/2,shipY-24);x.lineTo(beam.x,beam.y);x.stroke();x.globalAlpha=1;}
+
+  // 爆発
+  x.globalCompositeOperation='lighter';
+  par.forEach(p=>{x.globalAlpha=p.l;x.fillStyle=p.c;x.fillRect(p.x-2,p.y-2,4,4)});
+  x.globalAlpha=1;x.globalCompositeOperation='source-over';
+
+  // 解説
+  if(mode==='fb'){
+    const bh=100,by=Math.max(Math.min(H*.3-40,dangerY-bh-20),90);
+    x.fillStyle='#000000f2';x.fillRect(0,by,W,bh);
+    x.strokeStyle=fb===1?'#7ec8ff':'#ff5a5a';x.lineWidth=2;x.strokeRect(0,by,W,bh);
+    x.textAlign='center';x.font='bold 18px sans-serif';
+    x.fillStyle=fb===1?'#7ec8ff':'#ff5a5a';
+    x.fillText(fb===1?'DIRECT HIT !':(fb===0?'MISS !':'BREAKTHROUGH !'),W/2,by+28);
+    x.fillStyle='#ffd34d';x.font='bold 15px sans-serif';
+    x.fillText('答え： '+q[1][q[2]],W/2,by+56);
+    x.fillStyle='#cfe0f0';x.font='12px sans-serif';
+    x.fillText(q[3],W/2,by+80);
+  }
+  if(flash>0){x.fillStyle='rgba(255,40,40,'+(flash*.35)+')';x.fillRect(0,0,W,H);}
+  x.restore();
+}
+
+function wrapLines(t,max){
+  const words=t.split(' ');let ln='',ls=[];
+  words.forEach(word=>{const test=ln?ln+' '+word:word;
+    if(x.measureText(test).width>max){ls.push(ln);ln=word}else ln=test});
+  ls.push(ln);
+  return ls;
+}
+
+function over(){
+  run=false;mode='over';
+  res.innerHTML='MISSION '+(shield>0?'COMPLETE':'FAILED')+
+    '<br>SCORE : '+score+'　/　SHIELD : '+Math.max(shield,0);
+  hTitle.textContent=shield>0?'MISSION COMPLETE':'SHIELD DOWN';
+  btn.textContent='RETRY MISSION';
+  ui.classList.remove('hide');
+}
+</script>
